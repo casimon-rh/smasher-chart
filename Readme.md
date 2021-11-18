@@ -84,6 +84,7 @@ In case of deployment via **Argo CD** there's a missing feature around the [look
 overrideApiDomain: ""
 overrideSecretName: ""
 ```
+See also: https://github.com/argoproj/argo-cd/issues/3640
 
 For running the pipeline it need to be assigned the secret (img repo credentials) to the _pipeline_ service account.
 
