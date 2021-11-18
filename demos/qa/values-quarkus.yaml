@@ -1,0 +1,63 @@
+replicaCount: 2
+
+image:
+  repository: quay.io/casimon/code-with-quarkus
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: "qa"
+fullnameOverride: "s-qa"
+
+kubernetesMasterRef: false
+
+containerVolumes:
+  create: false
+  list: []
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8081
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+livenessProbe: {}
+readinessProbe: {}
+
+configmaps:
+  create: false
+  list: []
+overrideApiDomain: ""
+overrideSecretName: ""
+
+
+secrets:
+  create: true
+  list:
+  - name: quay-q
+    type: kubernetes.io/dockerconfigjson
+    data:
+      .dockerconfigjson: ""
+
+pipeline:
+  create: true
+  env: qa
+  gitrepo: https://github.com/elsony/devfile-sample-code-with-quarkus
+  gitbranch: master
+  s2i: openjdk-11-rhel7
+  buildname: quarkus-dev-bc
+  s2iurl: registry.redhat.io/openjdk/openjdk-11-rhel7
+
+servicemesh:
+  create: false

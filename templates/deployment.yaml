@@ -1,0 +1,102 @@
+{{- $dot := . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smasher.fullname" . }}
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "smasher.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "smasher.selectorLabels" . | nindent 8 }}
+        {{- include "smasher.meshLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "smasher.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.containerVolumes.create }}
+      volumes:
+      {{- range $vol := .Values.containerVolumes.list }}
+        - name: {{ $vol.name }}
+        {{- if eq $vol.type "configmap" }}
+          configMap:
+            name: {{ $vol.name }}
+            defaultMode: {{ $vol.mode }}
+        {{- else if eq $vol.type "secret" }}
+          secret:
+            secretName: {{ $vol.name }}
+            defaultMode: {{ $vol.mode }}
+        {{- else if eq $vol.type "token-secret" }}
+          secret:
+            {{- $serviceAccount := (lookup "v1" "ServiceAccount" $dot.Release.Namespace $dot.Values.serviceAccount.name ) }}
+            {{- if $serviceAccount }}
+            {{- range $secret := $serviceAccount.secrets }}
+            {{- if contains "token" $secret.name }}
+            secretName: {{ $secret.name }}
+            {{- end }}
+            {{- end }}
+            {{- else }}
+            secretName: {{ $dot.Values.overrideSecretName }}
+            {{- end }} 
+            defaultMode: {{ $vol.mode }}
+        {{- end }} 
+      {{- end }} 
+      {{- end }} 
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.kubernetesMasterRef }}
+            - name: KUBERNETES_MASTER
+            {{- include "smasher.apiDomain" . | nindent 14 }}
+          {{- end }}
+          {{- if .Values.containerVolumes.create }}
+          volumeMounts:
+          {{- range $vol := .Values.containerVolumes.list}}
+            - name: {{ $vol.name }}
+              mountPath: {{ $vol.path }}
+          {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

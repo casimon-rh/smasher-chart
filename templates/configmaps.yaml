@@ -1,0 +1,18 @@
+{{- $dot := . }}
+{{- if .Values.configmaps.create }}
+{{- range $cm := .Values.configmaps.list }}
+---
+apiVersion: v1
+data:
+{{- toYaml $cm.data | nindent 2 }}
+kind: ConfigMap
+metadata:
+  name: {{ $cm.name }}
+  labels:
+    app.kubernetes.io/version: {{ $dot.Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ $dot.Release.Service }}
+    app.kubernetes.io/name: {{ default $dot.Chart.Name $dot.Values.nameOverride | trunc 63 | trimSuffix "-" }}
+    app.kubernetes.io/instance: {{ $dot.Release.Name }}
+    meta.helm.sh/release-namespace: {{ $dot.Release.Namespace }}
+{{- end }}
+{{- end }}

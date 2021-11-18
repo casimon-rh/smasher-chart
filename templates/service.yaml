@@ -1,0 +1,40 @@
+{{- if .Values.servicemesh.create }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "smasher.fullname" . }}
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - ingress-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/{{ include "smasher.fullname" . }}"
+    rewrite:
+      uri: /
+    route:
+    - destination:
+        host:  {{ include "smasher.fullname" . }}
+        port:
+          number: {{ .Values.service.port }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smasher.fullname" . }}
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "smasher.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,111 @@
+{{- if .Values.pipeline.create }}
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ include "smasher.fullname" . }}
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+spec:
+  params:
+    - default: "{{ .Values.pipeline.gitrepo }}"
+      name: GIT-REPO
+      type: string
+    - default: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      name: DOCKER-IMAGE
+      type: string
+    - default: "{{ .Values.pipeline.s2i }}"
+      name: VERSION
+      type: string
+    - default: "image-registry.openshift-image-registry.svc:5000/{{ .Release.Namespace }}/{{ include "smasher.fullname" . }}"
+      name: LOCAL-IMAGE
+      type: string
+    - default: "{{ .Values.pipeline.gitbranch }}"
+      name: GIT-BRANCH
+      type: string
+    - default: "{{ .Values.pipeline.buildname }}"
+      name: BUILD-NAME
+      type: string
+    - default: "{{ .Values.pipeline.s2iurl }}"
+      name: S2I-URL
+      type: string
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.GIT-REPO)
+        - name: revision
+          value: $(params.GIT-BRANCH)
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: {{ include "smasher.fullname" . }}
+    {{- if eq .Values.pipeline.env "dev" }}
+    {{/* 
+      sonar
+      unit tests
+    */}}
+    {{- else if eq .Values.pipeline.env "qa" }}
+    {{/* 
+      integration
+      analysis?
+    */}}
+    {{- end }}
+    - name: oc-start-build
+      params:
+        - name: SCRIPT
+          value: >-
+            oc import-image $(params.VERSION) --from $(params.S2I-URL) --confirm &&
+            (oc new-build --name $(params.BUILD-NAME)
+            $(params.VERSION)~$(params.GIT-REPO) --to=$(params.LOCAL-IMAGE) ||
+            oc start-build bc/$(params.BUILD-NAME))
+        - name: VERSION
+          value: latest
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      workspaces:
+        - name: manifest-dir
+          workspace: {{ include "smasher.fullname" . }}
+        - name: kubeconfig-dir
+          workspace: {{ include "smasher.fullname" . }}
+    - name: oc-build-logs
+      params:
+        - name: SCRIPT
+          value: oc logs -f bc/$(params.BUILD-NAME)
+        - name: VERSION
+          value: latest
+      runAfter:
+        - oc-start-build
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      workspaces:
+        - name: manifest-dir
+          workspace: {{ include "smasher.fullname" . }}
+        - name: kubeconfig-dir
+          workspace: {{ include "smasher.fullname" . }}
+    - name: skopeo-copy
+      params:
+        - name: srcImageURL
+          value: 'docker://$(params.LOCAL-IMAGE)'
+        - name: destImageURL
+          value: 'docker://$(params.DOCKER-IMAGE)'
+        - name: srcTLSverify
+          value: 'false'
+        - name: destTLSverify
+          value: 'true'
+      runAfter:
+        - oc-build-logs
+      taskRef:
+        kind: ClusterTask
+        name: skopeo-copy
+      workspaces:
+        - name: images-url
+          workspace: {{ include "smasher.fullname" . }}
+  workspaces:
+    - name: {{ include "smasher.fullname" . }}
+{{- end }}

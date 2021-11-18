@@ -1,0 +1,61 @@
+replicaCount: 2
+
+image:
+  repository: quay.io/casimon/ruby-sample
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: "dev"
+fullnameOverride: ""
+
+kubernetesMasterRef: false
+
+containerVolumes:
+  create: false
+  list: []
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+livenessProbe: {}
+readinessProbe: {}
+configmaps:
+  create: false
+  list: []
+overrideApiDomain: ""
+overrideSecretName: ""
+
+secrets:
+  create: true
+  list:
+  - name: quay-r
+    type: kubernetes.io/dockerconfigjson
+    data:
+      .dockerconfigjson: ""
+
+pipeline:
+  create: true
+  env: dev
+  gitrepo: https://github.com/sclorg/ruby-ex
+  gitbranch: master
+  s2i: ruby-s2i
+  buildname: ruby-dev-bc
+  s2iurl: registry.access.redhat.com/ubi8/s2i-base:1-288
+
+servicemesh:
+  create: false

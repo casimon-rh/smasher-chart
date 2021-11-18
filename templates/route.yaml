@@ -1,0 +1,36 @@
+{{- if .Values.servicemesh.create }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: ingress-gateway
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+{{- else}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    {{- include "smasher.labels" . | nindent 4 }}
+  name: {{ include "smasher.fullname" . }}
+spec:
+  port:
+    targetPort: http
+  to:
+    kind: Service
+    name: {{ include "smasher.fullname" . }}
+    weight: 100
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+{{- end }}

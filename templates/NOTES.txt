@@ -1,0 +1,3 @@
+Thank you for installing {{ .Chart.Name }}.
+This is a test:
+{{(include "smasher.apiDomain" .)}}

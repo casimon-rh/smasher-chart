@@ -1,0 +1,91 @@
+replicaCount: 2
+
+image:
+  repository: quay.io/casimon/smasher-backend
+  pullPolicy: Always
+  tag: "devv"
+
+imagePullSecrets: []
+nameOverride: "s-dev"
+fullnameOverride: ""
+
+kubernetesMasterRef: true
+
+env:
+  - name: KUBERNETES_AUTH_SERVICEACCOUNT_TOKEN
+    value: /home/jboss/sa/token
+  - name: PRIVKEY_LOCATION
+    value: /home/jboss/keys/key.pem
+  - name: PUBKEY_LOCATION
+    value: /home/jboss/keys/pubkey.pem
+  - name: SELF_TAG
+    value: smasher-dev-s-dev
+
+containerVolumes:
+  create: true
+  list: 
+  - type: configmap
+    name: keys
+    mode: 420
+    path: /home/jboss/keys/
+  - type: token-secret
+    name: default
+    mode: 420
+    path: /home/jboss/sa/
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "smasher"
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+livenessProbe:
+  httpGet:
+    path: /q/health/live
+    port: http
+readinessProbe:
+  httpGet:
+    path: /q/health/ready
+    port: http
+
+overrideApiDomain: ""
+overrideSecretName: ""
+
+configmaps:
+  create: true
+  list:
+  - name: keys
+    data:
+      key.pem: ""
+      pubkey.pem: ""
+
+secrets:
+  create: true
+  list:
+  - name: quay
+    type: kubernetes.io/dockerconfigjson
+    data:
+      .dockerconfigjson: ""
+
+pipeline:
+  create: true
+  env: dev
+  gitrepo: https://github.com/casimon-rh/smasher-backend
+  gitbranch: master
+  s2i: openjdk-11-rhel7
+  buildname: smasher-backend-bc
+  s2iurl: registry.redhat.io/openjdk/openjdk-11-rhel7
+
+servicemesh:
+  create: true
